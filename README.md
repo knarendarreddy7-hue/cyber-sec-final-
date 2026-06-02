@@ -85,5 +85,5 @@ This project illustrates several important cybersecurity concepts:
 This assignment successfully demonstrated how a QR code can be weaponised to collect sensitive device information including IP address and GPS location. The project was completed using entirely free, publicly available tools and required no advanced programming knowledge — highlighting how low the barrier to entry is for such attacks.
 
 The key takeaway is that users should never scan QR codes from unknown or untrusted sources, and should deny location permissions to websites they do not fully trust. Awareness of these techniques is a critical part of personal cybersecurity hygiene.
-<img width="468" height="609" alt="image" src="https://github.com/user-attachments/assets/e6495746-4ef3-4b05-b77c-160b3058ba25" />
+
 
