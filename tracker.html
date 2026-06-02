@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hello!</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0f12; --surface: #141720; --border: #232736;
+    --accent: #5b6ef5; --accent2: #3ecf8e; --text: #e8eaf0;
+    --muted: #6b7280; --mono: 'DM Mono', monospace; --sans: 'DM Sans', sans-serif;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem 2rem; max-width: 480px; width: 100%; text-align: center; }
+  .icon { width: 56px; height: 56px; background: linear-gradient(135deg, #5b6ef522, #3ecf8e22); border: 1px solid var(--border); border-radius: 14px; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+  h1 { font-size: 1.4rem; font-weight: 500; margin-bottom: 0.5rem; }
+  p.sub { color: var(--muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 2rem; }
+  .btn { display: inline-block; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 0.7rem 1.8rem; font-family: var(--sans); font-size: 0.95rem; font-weight: 500; cursor: pointer; transition: opacity 0.2s; margin-bottom: 2rem; }
+  .btn:hover { opacity: 0.85; } .btn:disabled { opacity: 0.4; cursor: default; }
+  .data-grid { display: none; text-align: left; background: #0d0f12; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .data-grid.show { display: block; }
+  .row { display: flex; align-items: flex-start; padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); gap: 1rem; }
+  .row:last-child { border-bottom: none; }
+  .label { font-size: 0.78rem; color: var(--muted); font-family: var(--mono); min-width: 100px; padding-top: 1px; }
+  .value { font-size: 0.85rem; font-family: var(--mono); color: var(--accent2); word-break: break-all; }
+  .status { font-size: 0.82rem; color: var(--muted); margin-top: 1.2rem; }
+  .status span { color: var(--accent2); }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">👋</div>
+  <h1>Hey, you scanned the QR!</h1>
+  <p class="sub">This is a cybersecurity demo. Tap the button below to let the page collect your IP address and location — this shows how QR codes can be used to gather network info.</p>
+  <button class="btn" id="goBtn" onclick="collect()">Share my info (demo)</button>
+  <div class="data-grid" id="grid">
+    <div class="row"><span class="label">IP ADDRESS</span><span class="value" id="ip">…</span></div>
+    <div class="row"><span class="label">LATITUDE</span><span class="value" id="lat">…</span></div>
+    <div class="row"><span class="label">LONGITUDE</span><span class="value" id="lon">…</span></div>
+    <div class="row"><span class="label">ACCURACY</span><span class="value" id="acc">…</span></div>
+    <div class="row"><span class="label">USER AGENT</span><span class="value" id="ua">…</span></div>
+    <div class="row"><span class="label">TIMESTAMP</span><span class="value" id="ts">…</span></div>
+  </div>
+  <p class="status" id="status"></p>
+</div>
+
+<script>
+// ── PASTE YOUR JSONBIN.IO API KEY AND BIN ID BELOW ──
+const JSONBIN_API_KEY = 'YOUR_API_KEY_HERE';
+const JSONBIN_BIN_ID  = 'YOUR_BIN_ID_HERE';
+// ────────────────────────────────────────────────────
+
+async function saveToJsonbin(data) {
+  try {
+    // Read existing entries
+    const getRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+      headers: { 'X-Master-Key': JSONBIN_API_KEY }
+    });
+    const existing = await getRes.json();
+    const entries = existing.record.entries || [];
+    entries.push(data);
+
+    // Write back
+    await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
+      body: JSON.stringify({ entries })
+    });
+  } catch(e) {
+    console.warn('Could not save to jsonbin:', e);
+  }
+}
+
+async function collect() {
+  const btn = document.getElementById('goBtn');
+  const grid = document.getElementById('grid');
+  const status = document.getElementById('status');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Collecting…';
+  grid.classList.add('show');
+  status.innerHTML = '';
+
+  const result = { timestamp: new Date().toISOString(), userAgent: navigator.userAgent };
+
+  // 1. Get IP
+  try {
+    const r = await fetch('https://api.ipify.org?format=json');
+    const d = await r.json();
+    result.ip = d.ip;
+    document.getElementById('ip').textContent = d.ip;
+  } catch {
+    result.ip = 'unavailable';
+    document.getElementById('ip').textContent = 'Could not retrieve';
+  }
+
+  document.getElementById('ua').textContent = result.userAgent;
+  document.getElementById('ts').textContent = result.timestamp;
+
+  // 2. Get geolocation
+  if (!navigator.geolocation) {
+    result.lat = 'not supported'; result.lon = 'not supported'; result.accuracy = 'N/A';
+    document.getElementById('lat').textContent = 'Not supported';
+    document.getElementById('lon').textContent = 'Not supported';
+    document.getElementById('acc').textContent = 'N/A';
+    await saveToJsonbin(result);
+    btn.innerHTML = 'Done ✓';
+    return;
+  }
+
+  status.innerHTML = '<span class="spinner"></span>Waiting for location permission…';
+
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      result.lat = pos.coords.latitude.toFixed(6);
+      result.lon = pos.coords.longitude.toFixed(6);
+      result.accuracy = Math.round(pos.coords.accuracy) + ' meters';
+      document.getElementById('lat').textContent = result.lat;
+      document.getElementById('lon').textContent = result.lon;
+      document.getElementById('acc').textContent = result.accuracy;
+      await saveToJsonbin(result);
+      status.innerHTML = '✅ Done! Data collected. <span>Thank you!</span>';
+      btn.innerHTML = 'Done ✓';
+    },
+    async err => {
+      const msgs = {1:'Permission denied', 2:'Position unavailable', 3:'Timed out'};
+      result.lat = msgs[err.code] || 'error'; result.lon = '—'; result.accuracy = '—';
+      document.getElementById('lat').textContent = result.lat;
+      document.getElementById('lon').textContent = '—';
+      document.getElementById('acc').textContent = '—';
+      await saveToJsonbin(result);
+      status.innerHTML = '⚠️ Location permission was denied or unavailable.';
+      btn.innerHTML = 'Done';
+    },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+}
+</script>
+</body>
+</html>
